@@ -37,3 +37,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // PAWS posts
     Route::post('/paws', [PawsController::class, 'store']);
 });
+
+Route::middleware('auth:sanctum')->patch('/paws/{id}/adopted', [PawsController::class, 'markAdopted']);
+
