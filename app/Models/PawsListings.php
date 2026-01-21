@@ -19,4 +19,9 @@ class PawsListings extends Model
     {
         return $this->belongsTo(User::class, 'user_id','id');
     }
+
+    public function photos()
+    {
+        return $this->hasMany(PawsPhoto::class, 'paws_id', 'paws_id');
+    }
 }
