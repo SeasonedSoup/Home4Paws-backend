@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class PawsListings extends Model
+class PawsListing extends Model
 {
     protected $table = 'paws_listings';
 
@@ -24,4 +24,9 @@ class PawsListings extends Model
     {
         return $this->hasMany(PawsPhoto::class, 'paws_id', 'paws_id');
     }
+
+    public function reactions()
+        {
+            return $this->hasMany(Reaction::class, 'paws_id', 'paws_id');
+        }
 }

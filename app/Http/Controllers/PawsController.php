@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\PawsListings;
+use App\Models\PawsListing;
+use App\Models\Reaction;
 
 class PawsController extends Controller
 {
@@ -14,7 +15,7 @@ class PawsController extends Controller
             'location' => 'required|string'
         ]);
 
-        $paws = PawsListings::create([
+        $paws = PawsListing::create([
             'user_id' => auth()->id(),
             'caption' => $request->caption,
             'location' => $request->location,
@@ -29,7 +30,7 @@ class PawsController extends Controller
 
     public function index()
     {
-        $paws = PawsListings::with(['user', 'photos'])
+        $paws = PawsListing::with(['user', 'photos', 'reactions'])
             ->latest()
             ->take(20)
             ->get();
@@ -42,7 +43,7 @@ class PawsController extends Controller
 
     public function markAdopted($id)
     {
-        $paws = PawsListings::where('id', $id)
+        $paws = PawsListing::where('id', $id)
             ->where('user_id', auth()->id())
             ->firstOrFail();
 
@@ -55,7 +56,7 @@ class PawsController extends Controller
 
     public function destroy($id)
     {
-        $paws = PawsListings::where('id', $id)
+        $paws = PawsListing::where('id', $id)
             ->where('user_id', auth()->id())
             ->firstOrFail();
 
@@ -63,6 +64,30 @@ class PawsController extends Controller
 
         return response()->json([
             'message' => 'PAWS post deleted'
+        ]);
+    }
+
+    public function like($id)
+    {
+        Reaction::firstOrCreate([
+            'paws_id' => $id,
+            'reacted_by' => auth()->id(),
+            'reaction_type' => 'like',
+        ]);
+
+        return response()->json([
+            'message' => 'Post liked'
+        ]);
+    }
+
+    public function unlike($id)
+    {
+        Reaction::where('paws_id', $id)
+            ->where('reacted_by', auth()->id())
+            ->delete();
+
+        return response()->json([
+            'message' => 'Like removed'
         ]);
     }
 }

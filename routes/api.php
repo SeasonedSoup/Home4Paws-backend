@@ -40,3 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::middleware('auth:sanctum')->patch('/paws/{id}/adopted', [PawsController::class, 'markAdopted']);
 
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/paws/{id}/like', [PawsController::class, 'like']);
+    Route::delete('/paws/{id}/like', [PawsController::class, 'unlike']);
+});
