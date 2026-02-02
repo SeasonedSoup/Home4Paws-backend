@@ -31,6 +31,7 @@ class PawsController extends Controller
     public function index()
     {
         $paws = PawsListing::with(['user', 'photos', 'reactions'])
+            ->withCount('reactions')
             ->latest()
             ->take(20)
             ->get();
@@ -90,4 +91,6 @@ class PawsController extends Controller
             'message' => 'Like removed'
         ]);
     }
+
+    
 }

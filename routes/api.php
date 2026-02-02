@@ -1,46 +1,25 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PawsController;
+use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. 
-| Routes are assigned to the "api" middleware group.
-|
-*/
+// Public routes
+Route::get('/hi', function () {
+    return response()->json(['message' => 'Welcome to Home4Paws API']);
+});
 
-/*
-|------------------------------------------------------------------
-| Public Routes
-|------------------------------------------------------------------
-*/
 Route::post('/register', [UserController::class, 'register']);
 Route::post('/login', [UserController::class, 'login']);
-Route::get('/paws', [PawsController::class, 'index']); // public listing of posts
 
-/*
-|------------------------------------------------------------------
-| Protected Routes (auth:sanctum)
-|------------------------------------------------------------------
-*/
+// Protected routes (require token)
 Route::middleware('auth:sanctum')->group(function () {
-    // User
     Route::post('/logout', [UserController::class, 'logout']);
     Route::get('/profile', [UserController::class, 'profile']);
 
-    // PAWS posts
     Route::post('/paws', [PawsController::class, 'store']);
-});
-
-Route::middleware('auth:sanctum')->patch('/paws/{id}/adopted', [PawsController::class, 'markAdopted']);
-
-Route::middleware('auth:sanctum')->group(function () {
     Route::post('/paws/{id}/like', [PawsController::class, 'like']);
     Route::delete('/paws/{id}/like', [PawsController::class, 'unlike']);
+    Route::patch('/paws/{id}/adopt', [PawsController::class, 'markAdopted']);
+    Route::delete('/paws/{id}', [PawsController::class, 'destroy']);
 });

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
@@ -14,21 +14,26 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6'
+            'phone' => 'required|string',
+            'birthdate' => 'required|date',
+            'password' => 'required|string|min:8',
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'phone' => $request->phone,
+            'birthdate' => $request->birthdate,
             'password' => Hash::make($request->password),
         ]);
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        // Create token for auto-login after registration
+        $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
             'status' => 'success',
             'user' => $user,
-            'token' => $token
+            'token' => $token,
         ]);
     }
 
@@ -36,27 +41,30 @@ class UserController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'password' => 'required'
+            'password' => 'required',
         ]);
 
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.']
-            ]);
+            return response()->json([
+                'message' => 'Invalid credentials'
+            ], 401);
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        // Create API token
+        $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
             'status' => 'success',
             'user' => $user,
-            'token' => $token
+            'token' => $token,
         ]);
     }
+
     public function logout(Request $request)
     {
+        // Delete the current token
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
@@ -68,7 +76,6 @@ class UserController extends Controller
     public function profile(Request $request)
     {
         return response()->json([
-            'status' => 'success',
             'user' => $request->user()
         ]);
     }
