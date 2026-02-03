@@ -6,9 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class Reaction extends Model
 {
+    protected $table = 'reactions';
+    protected $primaryKey = 'reaction_id';
     protected $fillable = [
         'paws_id',
-        'reacted_by',
+        'user_id',
         'reaction_type',
     ];
 
@@ -19,6 +21,6 @@ class Reaction extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'reacted_by', 'id');
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 }

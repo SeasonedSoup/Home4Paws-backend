@@ -7,20 +7,20 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
 
-    public function up(): void
-    {
-        Schema::create('paws_listings', function (Blueprint $table) {
-            $table->id('paws_id'); // primary key as in your spec
-            $table->unsignedBigInteger('user_id'); // FK to users table
-            $table->text('caption');
-            $table->string('location');
-            $table->enum('status', ['available', 'adopted'])->default('available');
-            $table->timestamps();
+   public function up(): void
+{
+    Schema::create('paws_listings', function (Blueprint $table) {
+        $table->id('paws_id'); // Standard Laravel ID (or keep $table->id('paws_id') if preferred)
+        $table->unsignedBigInteger('user_id');
+        $table->string('title'); // Changed from caption to title
+        $table->text('description'); // Added description since it's in your fillable/query
+        $table->string('location');
+        $table->enum('status', ['available', 'adopted'])->default('available');
+        $table->timestamps();
 
-            // Foreign key constraint
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-        });
-    }
+        $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+    });
+}
 
     /**
      * Reverse the migrations.

@@ -14,14 +14,14 @@ return new class extends Migration
         Schema::create('reactions', function (Blueprint $table) {
             $table->id('reaction_id');
             $table->unsignedBigInteger('paws_id');
-            $table->unsignedBigInteger('reacted_by');
+            $table->unsignedBigInteger('user_id');
             $table->enum('reaction_type', ['like'])->default('like');
             $table->timestamps();
 
             $table->foreign('paws_id')->references('paws_id')->on('paws_listings')->onDelete('cascade');
-            $table->foreign('reacted_by')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
 
-            $table->unique(['paws_id', 'reacted_by']); // one like per user
+            $table->unique(['paws_id', 'user_id']); // one like per user
         });
 
     }

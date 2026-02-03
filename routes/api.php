@@ -12,14 +12,19 @@ Route::get('/hi', function () {
 Route::post('/register', [UserController::class, 'register']);
 Route::post('/login', [UserController::class, 'login']);
 
+// Public paws routes (anyone can view)
+Route::get('/paws', [PawsController::class, 'index']);          // Get all posts
+Route::get('/paws/{id}', [PawsController::class, 'show']);      // Get single post
+
 // Protected routes (require token)
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [UserController::class, 'logout']);
     Route::get('/profile', [UserController::class, 'profile']);
 
-    Route::post('/paws', [PawsController::class, 'store']);
-    Route::post('/paws/{id}/like', [PawsController::class, 'like']);
-    Route::delete('/paws/{id}/like', [PawsController::class, 'unlike']);
-    Route::patch('/paws/{id}/adopt', [PawsController::class, 'markAdopted']);
-    Route::delete('/paws/{id}', [PawsController::class, 'destroy']);
+    // Paws - authenticated actions
+    Route::post('/paws', [PawsController::class, 'store']);           // Create post
+    Route::put('/paws/{id}', [PawsController::class, 'update']);      // Update post
+    Route::delete('/paws/{id}', [PawsController::class, 'destroy']);  // Delete post
+    Route::post('/paws/{id}/like', [PawsController::class, 'like']);  // Like post
+    Route::patch('/paws/{id}/adopt', [PawsController::class, 'markAdopted']); // Mark adopted
 });
