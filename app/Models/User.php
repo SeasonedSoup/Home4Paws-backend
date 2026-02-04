@@ -44,4 +44,9 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+    public function notificationsReceived()
+{
+    // Ensure the foreign key matches 'receiver_id' from your migration
+    return $this->hasMany(InboxNotification::class, 'receiver_id')->latest();
+}
 }

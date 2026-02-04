@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\PawsListing;
 use App\Models\Reaction;
-
+use App\Models\InboxNotification;
 class PawsController extends Controller
 {
     public function store(Request $request)
@@ -48,8 +48,7 @@ public function index(Request $request)
         ->when($request->filled('search'), function ($query) use ($request) {
             // Grouping the OR condition so it doesn't bypass other filters
             $query->where(function($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%')
-                  ->orWhere('description', 'like', '%' . $request->search . '%');
+                $q->where('title', 'like', '%' . $request->search . '%');
             });
         })
         ->when($request->filled('location') && $request->location !== 'All', function ($query) use ($request) {
@@ -99,41 +98,58 @@ public function index(Request $request)
     public function like($id)
 {
     $user_id = auth()->id();
-    
-    $existing = Reaction::where('paws_id', $id)
-                ->where('user_id', $user_id)
-                ->first();
+    $paw = PawsListing::findOrFail($id);
 
-    if ($existing) {
-        $existing->delete(); // Unlike
-    } else {
-        Reaction::create([
-            'paws_id' => $id,
-            'user_id' => $user_id, // FIX: Changed from reacted_by to user_id
-            'reaction_type' => 'like',
+    // 1. Create or Find the reaction
+    Reaction::firstOrCreate([
+        'paws_id' => $id,
+        'user_id' => $user_id,
+    ], [
+        'reaction_type' => 'like',
+    ]);
+
+    // 2. CREATE THE NOTIFICATION (Only if the liker isn't the owner)
+    if ($paw->user_id !== $user_id) {
+        InboxNotification::firstOrCreate([
+            'receiver_id' => $paw->user_id,
+            'sender_id'   => $user_id,
+            'paws_id'     => $id,
+            'type'        => 'like',
+        ], [
+            'message'     => auth()->user()->name . " liked your post: " . $paw->title,
+            'is_read'     => false,
         ]);
     }
-
-    // Load fresh data with reactions array and count
-    $paws = PawsListing::with('reactions')->findOrFail($id);
 
     return response()->json([
         'status' => 'success',
-        'reactions_count' => $paws->reactions->count(),
-        'reactions' => $paws->reactions 
+        'reactions_count' => $paw->reactions()->count(),
+        'reactions' => $paw->reactions 
     ]);
 }
+    
+public function logEmailCopy($id)
+{
+    $user_id = auth()->id();
+    $paw = PawsListing::findOrFail($id);
 
-
-
-    public function unlike($id)
-    {
-        Reaction::where('paws_id', $id)
-            ->where('reacted_by', auth()->id())
-            ->delete();
-
-        return response()->json([
-            'message' => 'Like removed'
-        ]);
+    // 1. Don't notify if the owner copies their own email
+    if ($paw->user_id === $user_id) {
+        return response()->json(['message' => 'Owner action ignored'], 200);
     }
+
+    // 2. ONE-TIME LOGIC: firstOrCreate checks if this notification already exists
+    InboxNotification::firstOrCreate([
+        'receiver_id' => $paw->user_id,
+        'sender_id'   => $user_id,
+        'paws_id'     => $id,
+        'type'        => 'email_copy',
+    ], [
+        // This part only runs if the notification DOES NOT exist yet
+        'message'     => auth()->user()->name . " copied your email for the post: " . $paw->title,
+        'is_read'     => false,
+    ]);
+
+    return response()->json(['message' => 'Notification logged (one-time)']);
+}
 }

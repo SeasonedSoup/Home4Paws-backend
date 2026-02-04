@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PawsController;
+use App\Http\Controllers\InboxController;
+
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -27,4 +29,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/paws/{id}', [PawsController::class, 'destroy']);  // Delete post
     Route::post('/paws/{id}/like', [PawsController::class, 'like']);  // Like post
     Route::patch('/paws/{id}/adopt', [PawsController::class, 'markAdopted']); // Mark adopted
+
+    Route::get('/inbox', [InboxController::class, 'index']);
+    
+    // Get only NEW (unread) items
+    Route::get('/inbox/unread', [InboxController::class, 'unreadOnly']);
+
+    // Mark one item as read (Frontend must call this when the user clicks an item)
+    Route::post('/inbox/{id}/mark-read', [InboxController::class, 'markAsRead']);
+    
+    // Get just the count for the bell icon
+    Route::get('/inbox/unread-count', [InboxController::class, 'unreadCount']);
+
+    Route::post('/paws/{id}/copy-email', [App\Http\Controllers\PawsController::class, 'logEmailCopy']);
+
 });

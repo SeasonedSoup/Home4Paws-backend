@@ -40,4 +40,10 @@ class PawsListing extends Model
         {
             return $this->hasMany(Reaction::class, 'paws_id', 'paws_id');
         }
+
+    public function notifications()
+    {
+    return $this->hasMany(InboxNotification::class, 'paws_id', 'paws_id');
+    }
+
 }
