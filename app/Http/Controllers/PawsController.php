@@ -8,28 +8,43 @@ use App\Models\Reaction;
 use App\Models\InboxNotification;
 class PawsController extends Controller
 {
-    public function store(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string',
-            'description' => 'required|string',
-            'location' => 'required|string'
-        ]);
+   public function store(Request $request)
+{
+    // 1. VALIDATION: Enforce 1-3 images and text requirements
+    $request->validate([
+        'title'       => 'required|string|max:30',
+        'description' => 'required|string',
+        'location'    => 'required|string',
+        'photos'      => 'required|array|min:1|max:3', // MUST have at least 1, max 3
+        'photos.*'    => 'image|mimes:jpeg,png,jpg,webp|max:2048', // Max 2MB per file
+    ]);
 
-        $paws = PawsListing::create([
-            'user_id' => auth()->id(),
-            'title' => $request->title,
-            'description' => $request->description,
-            'location' => $request->location,
-            'status' => 'available',
-        ]);
+    // 2. CREATE THE LISTING
+    $listing = PawsListing::create([
+        'user_id'     => auth()->id(),
+        'title'       => $request->title,
+        'description' => $request->description,
+        'location'    => $request->location,
+    ]);
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $paws
-        ], 201);
+    // 3. HANDLE FILE UPLOADS
+    // Since 'photos' is required, we know it's there
+    foreach ($request->file('photos') as $file) {
+        // This stores the physical file in: storage/app/public/paws_images
+        $path = $file->store('paws_images', 'public');
+
+        // This saves the "address" (path) in the database
+        $listing->photos()->create([
+            'photo_path' => $path,
+        ]);
     }
-    public function show($id)
+
+    // 4. RETURN JSON
+    return response()->json([
+        'success' => true,
+        'paw'     => $listing->load('photos') // Load photos so frontend gets the new URLs
+    ], 201);
+}    public function show($id)
     {
     $paw = PawsListing::with(['user', 'photos', 'reactions'])
         ->withCount('reactions')
