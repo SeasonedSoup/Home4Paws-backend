@@ -18,6 +18,7 @@ class PawsListing extends Model
         'description',
         'location',
         'status',
+        'fb_link',
     ];
 
     protected $appends = ['reactions_count'];

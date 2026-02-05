@@ -14,9 +14,12 @@ Route::get('/hi', function () {
 Route::post('/register', [UserController::class, 'register']);
 Route::post('/login', [UserController::class, 'login']);
 
+
 // Public paws routes (anyone can view)
 Route::get('/paws', [PawsController::class, 'index']);          // Get all posts
+Route::get('/paws/global-stats', [PawsController::class, 'globalStats']);
 Route::get('/paws/{id}', [PawsController::class, 'show']);      // Get single post
+
 
 // Protected routes (require token)
 Route::middleware('auth:sanctum')->group(function () {
@@ -41,6 +44,5 @@ Route::middleware('auth:sanctum')->group(function () {
     // Get just the count for the bell icon
     Route::get('/inbox/unread-count', [InboxController::class, 'unreadCount']);
 
-    Route::post('/paws/{id}/copy-email', [App\Http\Controllers\PawsController::class, 'logEmailCopy']);
-
+    Route::post('/paws/{id}/visitFacebookAcc', [App\Http\Controllers\PawsController::class, 'logFacebookClick']);
 });

@@ -10,10 +10,11 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-    {
-        Schema::table('users', function (Blueprint $table) {
-        $table->date('birthdate')->nullable()->after('name');
-        });
+    {      
+    Schema::table('paws_listings', function (Blueprint $table) {
+        // String is enough for a URL; nullable so it's optional
+        $table->string('fb_link')->nullable()->after('location');
+    });
     }
 
     /**
@@ -21,7 +22,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table('paws_listings', function (Blueprint $table) {
             //
         });
     }

@@ -15,5 +15,5 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,  // Not needed for token auth!
+    'supports_credentials' => false,  
 ];

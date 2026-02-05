@@ -6,25 +6,27 @@ use Illuminate\Http\Request;
 use App\Models\PawsListing;
 use App\Models\Reaction;
 use App\Models\InboxNotification;
+use App\Models\User;
 class PawsController extends Controller
 {
    public function store(Request $request)
 {
-    // 1. VALIDATION: Enforce 1-3 images and text requirements
-    $request->validate([
+     $request->validate([
         'title'       => 'required|string|max:30',
         'description' => 'required|string',
         'location'    => 'required|string',
-        'photos'      => 'required|array|min:1|max:3', // MUST have at least 1, max 3
-        'photos.*'    => 'image|mimes:jpeg,png,jpg,webp|max:2048', // Max 2MB per file
+        'photos'      => 'required|array|min:1|max:3',
+        'photos.*'    => 'image|mimes:jpeg,png,jpg,webp|max:2048',
+        // ADD THIS:
+        'fb_link'     => 'nullable|url|regex:/^(https?:\/\/)?(www\.)?facebook\.com\/.+/i',
     ]);
 
-    // 2. CREATE THE LISTING
     $listing = PawsListing::create([
         'user_id'     => auth()->id(),
         'title'       => $request->title,
         'description' => $request->description,
         'location'    => $request->location,
+        'fb_link'     => $request->fb_link, // ADD THIS
     ]);
 
     // 3. HANDLE FILE UPLOADS
@@ -58,18 +60,30 @@ class PawsController extends Controller
     // 1. Add Request $request to the function arguments
 public function index(Request $request)
 {
-    $paws = PawsListing::with(['user', 'photos', 'reactions'])
+    $paws = PawsListing::with(['user:id,name,email', 'photos', 'reactions'])
         ->withCount('reactions')
+        // 1. Filter by Search
         ->when($request->filled('search'), function ($query) use ($request) {
-            // Grouping the OR condition so it doesn't bypass other filters
             $query->where(function($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%');
+                $q->where('title', 'like', '%' . $request->search . '%')
+                  ->orWhere('description', 'like', '%' . $request->search . '%');
             });
         })
+        // 2. Filter by Location
         ->when($request->filled('location') && $request->location !== 'All', function ($query) use ($request) {
             $query->where('location', $request->location);
         })
-        ->latest()
+        // 3. Dynamic Sorting
+        ->when($request->query('sort') === 'popular', 
+            function ($query) {
+                // Sort by reaction count first, then by newest for ties
+                $query->orderBy('reactions_count', 'desc')->orderBy('created_at', 'desc');
+            }, 
+            function ($query) {
+                // Default: Sort by newest
+                $query->latest();
+            }
+        )
         ->paginate(10);
 
     return response()->json([
@@ -83,18 +97,21 @@ public function index(Request $request)
 
 
 
+
     public function markAdopted($id)
-    {
-        $paws = PawsListing::where('id', $id)
-            ->where('user_id', auth()->id())
-            ->firstOrFail();
+{
+    // Fix: Use 'paws_id' instead of 'id' to match your schema
+    $paws = PawsListing::where('paws_id', $id)
+        ->where('user_id', auth()->id())
+        ->firstOrFail();
 
-        $paws->update(['status' => 'adopted']);
+    // This updates the 'status' column to 'adopted'
+    $paws->update(['status' => 'adopted']);
 
-        return response()->json([
-            'message' => 'PAWS post marked as adopted'
-        ]);
-    }
+    return response()->json([
+        'message' => 'PAWS post marked as adopted'
+    ]);
+}
 
     public function destroy($id)
     {
@@ -143,28 +160,36 @@ public function index(Request $request)
     ]);
 }
     
-public function logEmailCopy($id)
+public function logFacebookClick($id) // Rename from logEmailCopy if you're replacing it
 {
     $user_id = auth()->id();
     $paw = PawsListing::findOrFail($id);
 
-    // 1. Don't notify if the owner copies their own email
     if ($paw->user_id === $user_id) {
         return response()->json(['message' => 'Owner action ignored'], 200);
     }
 
-    // 2. ONE-TIME LOGIC: firstOrCreate checks if this notification already exists
     InboxNotification::firstOrCreate([
         'receiver_id' => $paw->user_id,
         'sender_id'   => $user_id,
         'paws_id'     => $id,
-        'type'        => 'email_copy',
+        'type'        => 'facebook_click', // Change type to match your logic
     ], [
-        // This part only runs if the notification DOES NOT exist yet
-        'message'     => auth()->user()->name . " copied your email for the post: " . $paw->title,
+        'message'     => auth()->user()->name . " visited your Facebook profile for: " . $paw->title,
         'is_read'     => false,
     ]);
 
-    return response()->json(['message' => 'Notification logged (one-time)']);
+    return response()->json(['message' => 'Facebook click logged']);
+}
+    public function getGlobalStats()
+{
+    // Verification: count() is a direct database aggregate and faster than fetching all records
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'total_posts' => PawsListing::count(),
+            'total_users' => User::count(),
+        ]
+    ]);
 }
 }
