@@ -60,43 +60,58 @@ class PawsController extends Controller
     // 1. Add Request $request to the function arguments
 public function index(Request $request)
 {
-    $paws = PawsListing::with(['user:id,name,email', 'photos', 'reactions'])
-        ->withCount('reactions')
-        // 1. Filter by Search
-        ->when($request->filled('search'), function ($query) use ($request) {
-            $query->where(function($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%')
-                  ->orWhere('description', 'like', '%' . $request->search . '%');
-            });
-        })
-        // 2. Filter by Location
-        ->when($request->filled('location') && $request->location !== 'All', function ($query) use ($request) {
-            $query->where('location', $request->location);
-        })
-        // 3. Dynamic Sorting
-        ->when($request->query('sort') === 'popular', 
-            function ($query) {
-                // Sort by reaction count first, then by newest for ties
-                $query->orderBy('reactions_count', 'desc')->orderBy('created_at', 'desc');
-            }, 
-            function ($query) {
-                // Default: Sort by newest
-                $query->latest();
+    $query = PawsListing::with(['user:id,name,email', 'photos', 'reactions'])
+        ->withCount('reactions');
+
+    // 1. Filter by Search
+    $query->when($request->filled('search'), function ($q) use ($request) {
+        $searchIn = $request->input('search_in', 'all');
+        $q->where(function($sub) use ($request, $searchIn) {
+            if ($searchIn === 'title') {
+                $sub->where('title', 'like', '%' . $request->search . '%');
+            } else {
+                $sub->where('title', 'like', '%' . $request->search . '%')
+                    ->orWhere('description', 'like', '%' . $request->search . '%');
             }
-        )
-        ->paginate(10);
+        });
+    });
+
+    // 2. Filter by Location
+    $query->when($request->filled('location') && $request->location !== 'All', function ($q) use ($request) {
+        $q->where('location', $request->location);
+    });
+
+    // 3. Filter by Status (Available/Adopted)
+    $query->when($request->filled('status') && $request->status !== 'all', function ($q) use ($request) {
+        $q->where('status', $request->status);
+    });
+
+    // 4. THE DUAL-LAYER SORTING LOGIC
+    // Layer 1: If "All" is selected, push Adopted to the bottom
+    if (!$request->filled('status') || $request->status === 'all') {
+        // status = 'adopted' is 0 for Available, 1 for Adopted. ASC puts 0 (Available) first.
+        $query->orderByRaw("status = 'adopted' ASC");
+    }
+
+    // Layer 2: Sub-sorting (Trending vs Popular vs Newest)
+    $sort = $request->query('sort');
+    if ($sort === 'trending') {
+        $query->where('created_at', '>=', now()->subDay())
+              ->orderBy('reactions_count', 'desc');
+    } elseif ($sort === 'popular') {
+        $query->orderBy('reactions_count', 'desc');
+    } else {
+        $query->latest();
+    }
 
     return response()->json([
         'status' => 'success',
-        'data' => $paws->items(),
-        'current_page' => $paws->currentPage(),
-        'last_page' => $paws->lastPage(),
-        'total' => $paws->total()
+        'data' => $query->paginate(10)->items(),
+        'current_page' => $query->paginate(10)->currentPage(),
+        'last_page' => $query->paginate(10)->lastPage(),
+        'total' => $query->paginate(10)->total()
     ]);
 }
-
-
-
 
     public function markAdopted($id)
 {
@@ -189,6 +204,7 @@ public function logFacebookClick($id) // Rename from logEmailCopy if you're repl
         'data' => [
             'total_posts' => PawsListing::count(),
             'total_users' => User::count(),
+            'total_adopted' => PawsListing::where('status', 'adopted')->count(),
         ]
     ]);
 }

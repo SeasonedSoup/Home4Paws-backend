@@ -16,8 +16,8 @@ Route::post('/login', [UserController::class, 'login']);
 
 
 // Public paws routes (anyone can view)
+Route::get('/paws/global-stats', [PawsController::class, 'getGlobalStats']);
 Route::get('/paws', [PawsController::class, 'index']);          // Get all posts
-Route::get('/paws/global-stats', [PawsController::class, 'globalStats']);
 Route::get('/paws/{id}', [PawsController::class, 'show']);      // Get single post
 
 
