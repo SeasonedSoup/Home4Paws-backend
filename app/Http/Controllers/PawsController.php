@@ -63,6 +63,10 @@ public function index(Request $request)
     $query = PawsListing::with(['user:id,name,email', 'photos', 'reactions'])
         ->withCount('reactions');
 
+        $query->when($request->filled('user_id'), function ($q) use ($request) {
+        $q->where('user_id', $request->user_id);
+    });
+
     // 1. Filter by Search
     $query->when($request->filled('search'), function ($q) use ($request) {
         $searchIn = $request->input('search_in', 'all');
@@ -212,5 +216,35 @@ public function logFacebookClick($id) // Rename from logEmailCopy if you're repl
             'total_adopted' => PawsListing::where('status', 'adopted')->count(),
         ]
     ]);
+
 }
+
+public function update(Request $request, $id)
+{
+    $listing = PawsListing::where('paws_id', $id)->where('user_id', auth()->id())->firstOrFail();
+
+    $request->validate([
+        'title'  => 'required|string|max:30',
+        'photos' => 'nullable|array|max:3',
+        'photos.*' => 'image|mimes:jpeg,png,jpg|max:2048',
+    ]);
+
+    // Update Text
+    $listing->update($request->only(['title', 'description', 'location', 'fb_link']));
+
+    // Update Photos (If provided)
+    if ($request->hasFile('photos')) {
+        // Optional: Delete old photos from storage here
+        $listing->photos()->delete(); 
+
+        foreach ($request->file('photos') as $file) {
+            $path = $file->store('paws_images', 'public');
+            $listing->photos()->create(['photo_path' => $path]);
+        }
+    }
+
+    return response()->json(['success' => true, 'data' => $listing->load('photos')]);
+}
+
+
 }
