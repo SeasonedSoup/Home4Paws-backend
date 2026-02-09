@@ -81,35 +81,40 @@ public function index(Request $request)
         $q->where('location', $request->location);
     });
 
-    // 3. Filter by Status (Available/Adopted)
-    $query->when($request->filled('status') && $request->status !== 'all', function ($q) use ($request) {
+    // 3. Filter by Status
+    $query->when($request->filled('status') && strtolower($request->status) !== 'all', function ($q) use ($request) {
         $q->where('status', $request->status);
     });
 
     // 4. THE DUAL-LAYER SORTING LOGIC
-    // Layer 1: If "All" is selected, push Adopted to the bottom
-    if (!$request->filled('status') || $request->status === 'all') {
-        // status = 'adopted' is 0 for Available, 1 for Adopted. ASC puts 0 (Available) first.
+    // Layer 1: Push Adopted to the bottom (Applies to Popular and Default)
+    if (!$request->filled('status') || strtolower($request->status) === 'all') {
         $query->orderByRaw("status = 'adopted' ASC");
     }
 
-    // Layer 2: Sub-sorting (Trending vs Popular vs Newest)
+    // Layer 2: Sub-sorting
     $sort = $request->query('sort');
+
     if ($sort === 'trending') {
         $query->where('created_at', '>=', now()->subDay())
+              ->has('reactions', '>=', 10)
               ->orderBy('reactions_count', 'desc');
     } elseif ($sort === 'popular') {
-        $query->orderBy('reactions_count', 'desc');
+        // Popular: MUST have at least 1 like, then sorted by most likes
+        $query->has('reactions', '>=', 1)
+              ->orderBy('reactions_count', 'desc');
     } else {
         $query->latest();
     }
 
+    $paginated = $query->paginate(10);
+
     return response()->json([
         'status' => 'success',
-        'data' => $query->paginate(10)->items(),
-        'current_page' => $query->paginate(10)->currentPage(),
-        'last_page' => $query->paginate(10)->lastPage(),
-        'total' => $query->paginate(10)->total()
+        'data' => $paginated->items(),
+        'current_page' => $paginated->currentPage(),
+        'last_page' => $paginated->lastPage(),
+        'total' => $paginated->total()
     ]);
 }
 
